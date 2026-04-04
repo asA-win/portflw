@@ -44,6 +44,8 @@ class ContactForm(BaseModel):
 
 @app.post("/api/contact")
 async def contact_form_submit(form_data: ContactForm, background_tasks: BackgroundTasks):
+    print(f"DEBUG: Received contact form submission from {form_data.email}")
+    
     # Prepare the email content
     html = f"""
     <h3>New Contact Form Submission</h3>
@@ -63,8 +65,16 @@ async def contact_form_submit(form_data: ContactForm, background_tasks: Backgrou
 
     fm = FastMail(conf)
     
-    # Send email in the background to avoid blocking the response
-    background_tasks.add_task(fm.send_message, message)
+    # Function to wrap email sending with logging
+    async def send_email_with_logging(msg):
+        try:
+            await fm.send_message(msg)
+            print("DEBUG: Email sent successfully!")
+        except Exception as e:
+            print(f"DEBUG ERROR: Failed to send email: {str(e)}")
+
+    # Send email in the background
+    background_tasks.add_task(send_email_with_logging, message)
     
     return {"status": "success", "message": "Thank you for your message! We will get back to you soon."}
 
