@@ -1,6 +1,7 @@
 fastapi
 uvicorn
-pydantic
+pydantic[email]
+email-validator
 python-dotenv
 fastapi-mail
 gunicorn
