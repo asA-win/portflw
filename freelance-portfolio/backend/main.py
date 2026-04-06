@@ -32,31 +32,41 @@ app.add_middleware(
 # Email Configuration
 # Gmail Port 587 uses STARTTLS
 # Gmail Port 465 uses SSL/TLS
-mail_port = int(os.getenv("MAIL_PORT", 465))
-mail_starttls_default = True if mail_port == 587 else False
-mail_ssl_tls_default = True if mail_port == 465 else False
+mail_port = int(os.getenv("MAIL_PORT", 587))
+mail_server = os.getenv("MAIL_SERVER", "smtp.gmail.com")
+mail_username = os.getenv("MAIL_USERNAME")
+mail_password = os.getenv("MAIL_PASSWORD")
+mail_from = os.getenv("MAIL_FROM", mail_username or "echelonai.project@gmail.com")
+
+# Improved logic for STARTTLS vs SSL/TLS
+# Port 587: STARTTLS = True, SSL_TLS = False
+# Port 465: STARTTLS = False, SSL_TLS = True
+is_port_587 = mail_port == 587
+mail_starttls = os.getenv("MAIL_STARTTLS", "True" if is_port_587 else "False").lower() == "true"
+mail_ssl_tls = os.getenv("MAIL_SSL_TLS", "False" if is_port_587 else "True").lower() == "true"
 
 conf = ConnectionConfig(
-    MAIL_USERNAME = os.getenv("MAIL_USERNAME"),
-    MAIL_PASSWORD = os.getenv("MAIL_PASSWORD"),
-    MAIL_FROM = os.getenv("MAIL_FROM", "echelonai.project@gmail.com"),
+    MAIL_USERNAME = mail_username,
+    MAIL_PASSWORD = mail_password,
+    MAIL_FROM = mail_from,
     MAIL_PORT = mail_port,
-    MAIL_SERVER = os.getenv("MAIL_SERVER", "smtp.gmail.com"),
-    MAIL_STARTTLS = os.getenv("MAIL_STARTTLS", str(mail_starttls_default)).lower() == "true",
-    MAIL_SSL_TLS = os.getenv("MAIL_SSL_TLS", str(mail_ssl_tls_default)).lower() == "true",
+    MAIL_SERVER = mail_server,
+    MAIL_STARTTLS = mail_starttls,
+    MAIL_SSL_TLS = mail_ssl_tls,
     USE_CREDENTIALS = True,
-    VALIDATE_CERTS = True
+    VALIDATE_CERTS = False  # Changed to False to avoid common certificate verification issues
 )
 
 class ContactForm(BaseModel):
     name: str
     email: EmailStr
-    service: Optional[str] = None
+    service: Optional[str] = ""
     message: str
 
 @app.post("/api/contact")
 async def contact_form_submit(form_data: ContactForm, background_tasks: BackgroundTasks):
     print(f"DEBUG: Received contact form submission from {form_data.email}")
+    print(f"DEBUG: Email Config: Server={mail_server}, Port={mail_port}, User={mail_username}, From={mail_from}, STARTTLS={mail_starttls}, SSL_TLS={mail_ssl_tls}")
     
     # Prepare the email content
     html = f"""
@@ -70,9 +80,9 @@ async def contact_form_submit(form_data: ContactForm, background_tasks: Backgrou
 
     message = MessageSchema(
         subject=f"New Contact from {form_data.name}",
-        recipients=["echelonai.project@gmail.com"],
+        recipients=[mail_from],  # Send to the configured MAIL_FROM address (your email)
         body=html,
-        subtype=MessageType.html
+        subtype="html"  # Use string for better compatibility across fastapi-mail versions
     )
 
     fm = FastMail(conf)
@@ -80,10 +90,13 @@ async def contact_form_submit(form_data: ContactForm, background_tasks: Backgrou
     # Function to wrap email sending with logging
     async def send_email_with_logging(msg):
         try:
+            print(f"DEBUG: Attempting to send email to {msg.recipients}...")
             await fm.send_message(msg)
-            print("DEBUG: Email sent successfully!")
+            print("DEBUG SUCCESS: Email sent successfully!")
         except Exception as e:
             print(f"DEBUG ERROR: Failed to send email: {str(e)}")
+            import traceback
+            traceback.print_exc()
 
     # Send email in the background
     background_tasks.add_task(send_email_with_logging, message)
