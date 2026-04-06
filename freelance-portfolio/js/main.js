@@ -224,7 +224,7 @@ document.addEventListener('DOMContentLoaded', function() {
                 };
 
                 // Send data to backend
-                fetch('http://localhost:8000/api/contact', {
+                fetch('https://portflw.onrender.com/api/contact', {
                     method: 'POST',
                     headers: {
                         'Content-Type': 'application/json'
