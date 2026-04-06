@@ -11,27 +11,39 @@ load_dotenv()
 app = FastAPI()
 
 # Configure CORS
-# Use "*" to allow all origins during development, especially when opening files directly via file://
-origins = ["*"]
+# Use ALLOWED_ORIGINS from env or default to "*"
+allowed_origins_env = os.getenv("ALLOWED_ORIGINS")
+if allowed_origins_env:
+    origins = allowed_origins_env.split(",")
+else:
+    origins = ["*"]
+
+# Note: When allow_origins=["*"], allow_credentials MUST be False
+allow_credentials = False if "*" in origins else True
 
 app.add_middleware(
     CORSMiddleware,
     allow_origins=origins,
-    allow_credentials=True,
+    allow_credentials=allow_credentials,
     allow_methods=["*"],
     allow_headers=["*"],
 )
 
 # Email Configuration
-# Note: For Gmail, you should use an "App Password" rather than your regular password.
+# Gmail Port 587 uses STARTTLS
+# Gmail Port 465 uses SSL/TLS
+mail_port = int(os.getenv("MAIL_PORT", 465))
+mail_starttls_default = True if mail_port == 587 else False
+mail_ssl_tls_default = True if mail_port == 465 else False
+
 conf = ConnectionConfig(
     MAIL_USERNAME = os.getenv("MAIL_USERNAME"),
     MAIL_PASSWORD = os.getenv("MAIL_PASSWORD"),
     MAIL_FROM = os.getenv("MAIL_FROM", "echelonai.project@gmail.com"),
-    MAIL_PORT = int(os.getenv("MAIL_PORT", 465)),
+    MAIL_PORT = mail_port,
     MAIL_SERVER = os.getenv("MAIL_SERVER", "smtp.gmail.com"),
-    MAIL_STARTTLS = False,
-    MAIL_SSL_TLS = True,
+    MAIL_STARTTLS = os.getenv("MAIL_STARTTLS", str(mail_starttls_default)).lower() == "true",
+    MAIL_SSL_TLS = os.getenv("MAIL_SSL_TLS", str(mail_ssl_tls_default)).lower() == "true",
     USE_CREDENTIALS = True,
     VALIDATE_CERTS = True
 )
