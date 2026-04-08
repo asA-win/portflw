@@ -12,13 +12,15 @@ app = FastAPI()
 
 # Configure CORS
 # Use ALLOWED_ORIGINS from env or default to "*"
-allowed_origins_env = os.getenv("ALLOWED_ORIGINS")
-if allowed_origins_env:
-    origins = allowed_origins_env.split(",")
-else:
+allowed_origins_env = os.getenv("ALLOWED_ORIGINS", "*")
+if allowed_origins_env == "*":
     origins = ["*"]
+else:
+    # Split by comma and strip whitespace to avoid issues
+    origins = [origin.strip() for origin in allowed_origins_env.split(",") if origin.strip()]
 
 # Note: When allow_origins=["*"], allow_credentials MUST be False
+# To be safe in production, it's better to explicitly allow the origins
 allow_credentials = False if "*" in origins else True
 
 app.add_middleware(
@@ -27,6 +29,7 @@ app.add_middleware(
     allow_credentials=allow_credentials,
     allow_methods=["*"],
     allow_headers=["*"],
+    expose_headers=["*"],
 )
 
 # Email Configuration
@@ -64,8 +67,14 @@ class ContactForm(BaseModel):
     message: str
 
 @app.post("/api/contact")
-async def contact_form_submit(form_data: ContactForm, background_tasks: BackgroundTasks):
+async def contact_form_submit(form_data: ContactForm):
     print(f"DEBUG: Received contact form submission from {form_data.email}")
+    
+    if not mail_username or not mail_password:
+        error_msg = "Email configuration is missing (MAIL_USERNAME or MAIL_PASSWORD)."
+        print(f"DEBUG ERROR: {error_msg}")
+        raise HTTPException(status_code=500, detail=error_msg)
+
     print(f"DEBUG: Email Config: Server={mail_server}, Port={mail_port}, User={mail_username}, From={mail_from}, STARTTLS={mail_starttls}, SSL_TLS={mail_ssl_tls}")
     
     # Prepare the email content
@@ -82,26 +91,22 @@ async def contact_form_submit(form_data: ContactForm, background_tasks: Backgrou
         subject=f"New Contact from {form_data.name}",
         recipients=[mail_from],  # Send to the configured MAIL_FROM address (your email)
         body=html,
-        subtype="html"  # Use string for better compatibility across fastapi-mail versions
+        subtype="html"
     )
 
     fm = FastMail(conf)
     
-    # Function to wrap email sending with logging
-    async def send_email_with_logging(msg):
-        try:
-            print(f"DEBUG: Attempting to send email to {msg.recipients}...")
-            await fm.send_message(msg)
-            print("DEBUG SUCCESS: Email sent successfully!")
-        except Exception as e:
-            print(f"DEBUG ERROR: Failed to send email: {str(e)}")
-            import traceback
-            traceback.print_exc()
-
-    # Send email in the background
-    background_tasks.add_task(send_email_with_logging, message)
-    
-    return {"status": "success", "message": "Thank you for your message! We will get back to you soon."}
+    try:
+        print(f"DEBUG: Attempting to send email to {mail_from}...")
+        await fm.send_message(message)
+        print("DEBUG SUCCESS: Email sent successfully!")
+        return {"status": "success", "message": "Thank you for your message! We will get back to you soon."}
+    except Exception as e:
+        error_detail = str(e)
+        print(f"DEBUG ERROR: Failed to send email: {error_detail}")
+        import traceback
+        traceback.print_exc()
+        raise HTTPException(status_code=500, detail=f"Failed to send email: {error_detail}")
 
 @app.get("/")
 async def root():
@@ -110,5 +115,3 @@ async def root():
 if __name__ == "__main__":
     import uvicorn
     uvicorn.run(app, host="0.0.0.0", port=8000)
-
-
