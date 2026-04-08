@@ -231,11 +231,13 @@ document.addEventListener('DOMContentLoaded', function() {
                     },
                     body: JSON.stringify(formData)
                 })
-                .then(response => {
+                .then(async response => {
+                    const data = await response.json();
                     if (!response.ok) {
-                        throw new Error('Network response was not ok');
+                        // Throw error with the detail from backend if it exists
+                        throw new Error(data.detail || 'Network response was not ok');
                     }
-                    return response.json();
+                    return data;
                 })
                 .then(data => {
                     alert(data.message || 'Thank you for your message! We will get back to you soon.');
@@ -243,7 +245,7 @@ document.addEventListener('DOMContentLoaded', function() {
                 })
                 .catch(error => {
                     console.error('Error:', error);
-                    alert('There was an error sending your message. Please try again later.');
+                    alert('Error: ' + error.message);
                 });
             }
         });
