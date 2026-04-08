@@ -669,9 +669,10 @@ img {
 
 /* === FOOTER === */
 .footer {
-    background-color: var(--bg-light);
-    border-top: 1px solid #f1f5f9;
+    background-color: var(--primary-color);
+    border-top: none;
     padding: var(--spacing-lg) 0 0;
+    color: var(--white-color);
 }
 
 .footer-grid {
@@ -683,7 +684,7 @@ img {
 .footer-col h3 {
     font-size: 2.5rem;
     margin-bottom: 1.5rem;
-    color: var(--primary-color);
+    color: var(--white-color);
 }
 
 .footer-col h4 {
@@ -692,12 +693,12 @@ img {
     text-transform: uppercase;
     letter-spacing: 0.2em;
     margin-bottom: 1.5rem;
-    color: var(--text-muted);
+    color: rgba(255, 255, 255, 0.7);
 }
 
 .footer-col p {
     font-size: 0.9rem;
-    color: var(--text-muted);
+    color: rgba(255, 255, 255, 0.6);
 }
 
 .footer-col ul li {
@@ -705,8 +706,9 @@ img {
 }
 
 .footer-col a {
-    color: var(--text-muted);
+    color: rgba(255, 255, 255, 0.6);
     font-size: 0.9rem;
+    transition: color 0.3s ease;
 }
 
 .footer-col a:hover {
@@ -721,35 +723,38 @@ img {
 .social-icons img {
     width: 18px;
     height: 18px;
-    filter: brightness(0);
-    opacity: 0.4;
+    filter: brightness(0) invert(1);
+    opacity: 0.6;
 }
 
 .newsletter-form input {
     background: transparent;
     border: none;
-    border-bottom: 1px solid #e2e8f0;
+    border-bottom: 1px solid rgba(255, 255, 255, 0.2);
     border-radius: 0;
     padding: 0.75rem 0;
+    color: var(--white-color);
+    width: 100%;
 }
 
 .newsletter-form input:focus {
     outline: none;
-    border-bottom-color: var(--primary-color);
+    border-bottom-color: var(--accent-color);
 }
 
 .newsletter-form .btn {
     padding: 0.75rem 1.5rem;
+    margin-top: 1rem;
 }
 
 .copyright {
     margin-top: var(--spacing-lg);
-    border-top: 1px solid #f1f5f9;
+    border-top: 1px solid rgba(255, 255, 255, 0.1);
     padding: var(--spacing-md) 0;
     font-size: 0.7rem;
     text-transform: uppercase;
     letter-spacing: 0.1em;
-    color: var(--text-muted);
+    color: rgba(255, 255, 255, 0.5);
 }
 
 /* === MOBILE MENU ENHANCEMENTS === */
