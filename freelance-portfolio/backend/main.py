@@ -3,10 +3,20 @@ from fastapi.middleware.cors import CORSMiddleware
 from pydantic import BaseModel, EmailStr
 from typing import Optional, List
 import os
+import resend
 from dotenv import load_dotenv
-from fastapi_mail import FastMail, MessageSchema, ConnectionConfig, MessageType
 
 load_dotenv()
+
+# Initialize Resend
+resend_api_key = os.getenv("RESEND_API_KEY")
+if resend_api_key:
+    resend.api_key = resend_api_key
+else:
+    print("WARNING: RESEND_API_KEY is not set in environment variables.")
+
+mail_from = os.getenv("MAIL_FROM", "onboarding@resend.dev")
+mail_to = os.getenv("MAIL_TO", "echelonai.project@gmail.com")
 
 app = FastAPI()
 
@@ -32,33 +42,8 @@ app.add_middleware(
     expose_headers=["*"],
 )
 
-# Email Configuration
-# Gmail Port 587 uses STARTTLS
-# Gmail Port 465 uses SSL/TLS
-mail_port = int(os.getenv("MAIL_PORT", 587))
-mail_server = os.getenv("MAIL_SERVER", "smtp.gmail.com")
-mail_username = os.getenv("MAIL_USERNAME")
-mail_password = os.getenv("MAIL_PASSWORD")
-mail_from = os.getenv("MAIL_FROM", mail_username or "echelonai.project@gmail.com")
-
-# Improved logic for STARTTLS vs SSL/TLS
-# Port 587: STARTTLS = True, SSL_TLS = False
-# Port 465: STARTTLS = False, SSL_TLS = True
-is_port_587 = mail_port == 587
-mail_starttls = os.getenv("MAIL_STARTTLS", "True" if is_port_587 else "False").lower() == "true"
-mail_ssl_tls = os.getenv("MAIL_SSL_TLS", "False" if is_port_587 else "True").lower() == "true"
-
-conf = ConnectionConfig(
-    MAIL_USERNAME = mail_username,
-    MAIL_PASSWORD = mail_password,
-    MAIL_FROM = mail_from,
-    MAIL_PORT = mail_port,
-    MAIL_SERVER = mail_server,
-    MAIL_STARTTLS = mail_starttls,
-    MAIL_SSL_TLS = mail_ssl_tls,
-    USE_CREDENTIALS = True,
-    VALIDATE_CERTS = False  # Changed to False to avoid common certificate verification issues
-)
+# Email recipient (where the contact form notifications go)
+mail_to = os.getenv("MAIL_TO", "echelonai.project@gmail.com")
 
 class ContactForm(BaseModel):
     name: str
@@ -70,13 +55,11 @@ class ContactForm(BaseModel):
 async def contact_form_submit(form_data: ContactForm):
     print(f"DEBUG: Received contact form submission from {form_data.email}")
     
-    if not mail_username or not mail_password:
-        error_msg = "Email configuration is missing (MAIL_USERNAME or MAIL_PASSWORD)."
+    if not resend_api_key:
+        error_msg = "Resend API Key is missing."
         print(f"DEBUG ERROR: {error_msg}")
         raise HTTPException(status_code=500, detail=error_msg)
 
-    print(f"DEBUG: Email Config: Server={mail_server}, Port={mail_port}, User={mail_username}, From={mail_from}, STARTTLS={mail_starttls}, SSL_TLS={mail_ssl_tls}")
-    
     # Prepare the email content
     html = f"""
     <h3>New Contact Form Submission</h3>
@@ -87,25 +70,23 @@ async def contact_form_submit(form_data: ContactForm):
     <p>{form_data.message}</p>
     """
 
-    message = MessageSchema(
-        subject=f"New Contact from {form_data.name}",
-        recipients=[mail_from],  # Send to the configured MAIL_FROM address (your email)
-        body=html,
-        subtype="html"
-    )
-
-    fm = FastMail(conf)
-    
     try:
-        print(f"DEBUG: Attempting to send email to {mail_from}...")
-        await fm.send_message(message)
-        print("DEBUG SUCCESS: Email sent successfully!")
+        print(f"DEBUG: Attempting to send email via Resend to {mail_to}...")
+        
+        params = {
+            "from": mail_from,
+            "to": mail_to,
+            "subject": f"New Contact from {form_data.name}",
+            "html": html,
+        }
+
+        email = resend.Emails.send(params)
+        print(f"DEBUG SUCCESS: Email sent successfully! ID: {email.get('id')}")
+        
         return {"status": "success", "message": "Thank you for your message! We will get back to you soon."}
     except Exception as e:
         error_detail = str(e)
         print(f"DEBUG ERROR: Failed to send email: {error_detail}")
-        import traceback
-        traceback.print_exc()
         raise HTTPException(status_code=500, detail=f"Failed to send email: {error_detail}")
 
 @app.get("/")
