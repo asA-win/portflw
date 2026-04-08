@@ -3,5 +3,5 @@ uvicorn
 pydantic[email]
 email-validator
 python-dotenv
-fastapi-mail
+resend
 gunicorn
