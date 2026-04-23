@@ -48,6 +48,7 @@ mail_to = os.getenv("MAIL_TO", "echelonai.project@gmail.com")
 class ContactForm(BaseModel):
     name: str
     email: EmailStr
+    phone: Optional[str] = ""
     service: Optional[str] = ""
     message: str
 
@@ -65,6 +66,7 @@ async def contact_form_submit(form_data: ContactForm):
     <h3>New Contact Form Submission</h3>
     <p><strong>Name:</strong> {form_data.name}</p>
     <p><strong>Email:</strong> {form_data.email}</p>
+    <p><strong>Phone:</strong> {form_data.phone or 'N/A'}</p>
     <p><strong>Service of Interest:</strong> {form_data.service or 'N/A'}</p>
     <p><strong>Message:</strong></p>
     <p>{form_data.message}</p>
