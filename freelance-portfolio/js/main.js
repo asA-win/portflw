@@ -190,6 +190,7 @@ document.addEventListener('DOMContentLoaded', function() {
             let isValid = true;
             const name = document.getElementById('name');
             const email = document.getElementById('email');
+            const phone = document.getElementById('phone');
             const message = document.getElementById('message');
 
             // Simple validation: check if fields are not empty
@@ -219,6 +220,7 @@ document.addEventListener('DOMContentLoaded', function() {
                 const formData = {
                     name: name.value,
                     email: email.value,
+                    phone: phone.value,
                     service: document.getElementById('service').value,
                     message: message.value
                 };
